@@ -154,7 +154,7 @@ def parse_fasta(text):
     return sequences
 
 # ==========================================
-4. 后台预加载 PDB (升级为含铰链区的 1E4K)
+# 4. 后台预加载 PDB (升级为含铰链区的 1E4K)
 # ==========================================
 @st.cache_data(show_spinner=False)
 def fetch_pdb_data():
