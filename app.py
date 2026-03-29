@@ -5,13 +5,13 @@ import pandas as pd
 # ==========================================
 # 1. 网页全局设置
 # ==========================================
-st.set_page_config(page_title="Fc 突变深度解码雷达", page_icon="🛡️", layout="wide")
+st.set_page_config(page_title="Fc 突变深度解码雷达 V17", page_icon="🛡️", layout="wide")
 
-st.title("🛡️ 工业级 Fc 工程化突变解码雷达 (全平台统治版)")
-st.info("💡 终极指纹图谱：已集成 Genentech (KIH)、Zymeworks (Azymetric)、Xencor (XmAb)、Chugai (ART-Ig)、Genmab (HexaBody) 等全球领先药企的核心专利突变群。")
+st.title("🛡️ 工业级 Fc 工程化突变解码雷达 (V17 智能排雷版)")
+st.info("💡 终极指纹图谱：集成全球头部药企专利突变库。新增【同种异型 (Allotype) 鉴定】与【反向排雷 (Missing Mutation Alerts)】机制，预警 ADA 免疫原性风险与 CMC 纯化缺陷。")
 
 # ==========================================
-# 2. 核心知识库：全境 Fc 亚型与突变指纹图谱
+# 2. 核心知识库：全境 Fc 亚型、突变与同种异型图谱
 # ==========================================
 ISOTYPE_MOTIFS = {
     "IgG1": r"CPPCPAPELLG|CPPCPAPEAAG|CPPCPAPELAG",
@@ -19,6 +19,14 @@ ISOTYPE_MOTIFS = {
     "IgG4 (野生型)": r"CPSCPAPEFLG",
     "IgG4 (S228P 稳定型)": r"CPPCPAPEFLG|CPPCPAPEAAG",
     "IgG3": r"CPRCPAPELLG",
+}
+
+# 同种异型鉴定字典 (Allotype)
+ALLOTYPE_DB = {
+    r"PPSR([D])E([L])T": ("G1m1", "D356/L358", "高加索人群常见; 强免疫原性标记"),
+    r"PPSR([E])E([M])T": ("G1m3 / nG1m1", "E356/M358", "亚洲人群常见; G1m3 骨架标志"),
+    r"VEP([K])SC": ("G1m17", "K214", "常与 G1m1 连锁 (CH1区)"),
+    r"VEP([R])SC": ("nG1m17 (G1m3)", "R214", "常与 G1m3 连锁 (CH1区)"),
 }
 
 MUTATION_DB = {
@@ -29,7 +37,7 @@ MUTATION_DB = {
     r"VVV([S])VSHED": ("D265S", "D265S", "通用", "【毒性沉默】深度消除效应子结合，破坏结合界面"),
     r"VVV([A])VSHED": ("D265A", "D265A", "通用", "【毒性沉默】深度消除效应子结合，破坏结合界面"),
     r"NKAL([G])APIE": ("P329G", "P329G", "Roche", "【毒性沉默】破坏 FcγR 结合口袋，构成 LALA-PG 组合"),
-    r"NNAKTKPREE[Q]Y[A]ST|NNAKTKPREE[Q]Y[Q]ST|NNAKTKPREE[Q]Y[G]ST": ("Aglycosylation", "N297A/Q/G", "通用", "【去糖基化】消除 N-糖基化位点，导致完全丧失效应子功能"),
+    r"NNAKTKPREE[Q]Y[A]ST|NNAKTKPREE[Q]Y[Q]ST|NNAKTKPREE[Q]Y[G]ST": ("Aglycosylation", "N297A/Q/G", "通用", "【去糖基化】消除 N-糖基化位点，丧失效应子功能"),
 
     # --- 模块二：效应子功能增强 ---
     r"PAPELL([A])GP([D])VFL": ("GA-SD", "G236A, S239D", "Xencor", "【功能增强】显著增强对 FcγRIIa 和 FcγRIIIa 的亲和力"),
@@ -75,32 +83,39 @@ MUTATION_DB = {
 # ==========================================
 def analyze_fc(sequence):
     seq = sequence.upper().replace(" ", "").replace("\n", "")
-    results = {"isotype": "未知 (未检测到标准骨架)", "mutations": [], "has_fc": False}
+    results = {"isotype": "未知 (未检测到标准骨架)", "mutations": [], "allotypes": [], "has_fc": False}
     
     if "LSPGK" in seq or "CPPCP" in seq or "VFLFPPKPK" in seq:
         results["has_fc"] = True
     else:
         return results
 
+    # 检测亚型
     for iso, motif in ISOTYPE_MOTIFS.items():
         if re.search(motif, seq):
             results["isotype"] = iso
             break
             
+    # 检测同种异型 (Allotypes)
+    for motif, (allo_name, eu_num, desc) in ALLOTYPE_DB.items():
+        if re.search(motif, seq):
+            results["allotypes"].append({
+                "名称": allo_name, "位置": eu_num, "描述": desc
+            })
+
+    # 检测特定专利突变
     for motif, (mut_name, eu_num, platform, func) in MUTATION_DB.items():
         if re.search(motif, seq):
             results["mutations"].append({
-                "突变简称": mut_name,
-                "EU 编号": eu_num,
-                "技术溯源": platform,
-                "生物学功能": func
+                "突变简称": mut_name, "EU 编号": eu_num, "技术溯源": platform, "生物学功能": func
             })
+            
     return results
 
 def parse_fasta(text):
     sequences = {}
     if ">" not in text:
-        sequences["未命名输入序列"] = text.upper()
+        sequences["未命名输入序列_1"] = text.upper()
         return sequences
     for part in text.split(">"):
         if not part.strip(): continue
@@ -119,31 +134,38 @@ if st.button("🔍 启动全境 Fc 深度解码", type="primary"):
     if raw_input:
         seq_dict = parse_fasta(raw_input)
         report_data = []
-        deduction_reports = {} # 独立存储每条序列的推演情报
+        deduction_reports = {} # 用于存储反向排雷所需的情报
         
-        with st.spinner("正在遍历全球制药巨头突变专利库..."):
+        with st.spinner("正在遍历全球制药巨头突变专利库与同种异型字典..."):
             for name, seq in seq_dict.items():
                 res = analyze_fc(seq)
-                current_seq_muts = []
+                current_muts = [m["突变简称"] for m in res["mutations"]]
+                current_allos = [a["名称"] for a in res["allotypes"]]
+                
+                # 保存情报，供智能战略模块使用
+                deduction_reports[name] = {
+                    "isotype": res["isotype"],
+                    "muts": current_muts,
+                    "allos": current_allos
+                }
                 
                 if not res["has_fc"]:
-                    report_data.append({"序列名称": name, "Fc 亚型骨架": "❌ 未检测到 Fc 区", "检测到的特定突变": "-", "EU 编号": "-", "技术溯源": "-", "临床/CMC 功能解析": "-"})
+                    report_data.append({"序列名称": name, "Fc 亚型骨架": "❌ 未检测到 Fc 区", "同种异型鉴定": "-", "特定突变识别": "-", "EU 编号": "-", "平台/溯源": "-", "临床/CMC 解析": "-"})
                     continue
+                
+                allo_str = " | ".join(current_allos) if current_allos else "未知或非典型"
+                
                 if not res["mutations"]:
-                    report_data.append({"序列名称": name, "Fc 亚型骨架": res["isotype"], "检测到的特定突变": "野生型 (WT)", "EU 编号": "-", "技术溯源": "Natural", "临床/CMC 功能解析": "天然效应子功能与正常半衰期"})
+                    report_data.append({"序列名称": name, "Fc 亚型骨架": res["isotype"], "同种异型鉴定": allo_str, "特定突变识别": "野生型 (WT)", "EU 编号": "-", "平台/溯源": "Natural", "临床/CMC 解析": "天然效应子功能与正常半衰期"})
                 else:
                     for mut in res["mutations"]:
-                        current_seq_muts.append(mut["突变简称"])
-                        report_data.append({"序列名称": name, "Fc 亚型骨架": res["isotype"], "检测到的特定突变": mut["突变简称"], "EU 编号": mut["EU 编号"], "技术溯源": mut["技术溯源"], "临床/CMC 功能解析": mut["生物学功能"]})
-                
-                # 记录该序列的独有突变组合，供下游独立推演
-                deduction_reports[name] = current_seq_muts
+                        report_data.append({"序列名称": name, "Fc 亚型骨架": res["isotype"], "同种异型鉴定": allo_str, "特定突变识别": mut["突变简称"], "EU 编号": mut["EU 编号"], "平台/溯源": mut["技术溯源"], "临床/CMC 解析": mut["生物学功能"]})
 
         if report_data:
             df = pd.DataFrame(report_data)
             
             def highlight_rows(row):
-                mut_str = str(row['检测到的特定突变'])
+                mut_str = str(row['特定突变识别'])
                 if any(x in mut_str for x in ["Knob", "Hole", "EW", "RVT", "Azymetric", "Charge Steer"]): return ['background-color: #e3f2fd'] * len(row)
                 if any(x in mut_str for x in ["LALA", "P329G", "D265", "FEA", "PAA"]): return ['background-color: #fff3e0'] * len(row)
                 if any(x in mut_str for x in ["GA-SD", "AL-IE", "HexaBody"]): return ['background-color: #ffebee'] * len(row)
@@ -154,35 +176,70 @@ if st.button("🔍 启动全境 Fc 深度解码", type="primary"):
             st.markdown("### 📊 Fc 全境工程化分析报告")
             st.dataframe(df.style.apply(highlight_rows, axis=1), use_container_width=True)
             
-            # --- 智能战略级推演 (按序列隔离处理) ---
-            st.markdown("### 💡 独立分子战略意图推演")
+            # --- 智能战略级推演 & 反向排雷 (按序列隔离处理) ---
+            st.markdown("### 💡 独立分子战略推演与反向排雷预警")
             
-            for seq_name, muts in deduction_reports.items():
-                if not muts: continue
+            for seq_name, data in deduction_reports.items():
+                if data["isotype"] == "未知 (未检测到标准骨架)": continue
+                
+                muts = data["muts"]
+                allos = data["allos"]
+                iso = data["isotype"]
                 
                 with st.expander(f"📌 情报解密: {seq_name}", expanded=True):
+                    
+                    # ==========================================
+                    # 💥 反向排雷预警 (Missing Mutation Alerts)
+                    # ==========================================
+                    has_warning = False
+                    
+                    # 1. IgG4 缺陷预警
+                    if iso == "IgG4 (野生型)":
+                        st.error("🚨 **反向排雷 [CMC风险]：缺失 S228P 稳定突变！** 检测到天然 IgG4 骨架。该分子在体内极易发生半分子交换 (Fab-arm exchange) 导致药物失效，强烈建议引入 S228P 或改成 IgG1 骨架。")
+                        has_warning = True
+                        
+                    # 2. 双抗纯化缺陷预警
+                    is_bispecific = any(x in "".join(muts) for x in ["Knob", "Hole", "EW", "Azymetric", "Charge Steer"])
+                    if is_bispecific and "Protein A 破坏" not in muts:
+                        st.warning("⚠️ **反向排雷 [下游工艺风险]：缺失不对称纯化突变！** 检测到双抗组装支架，但未见 H435R/Y436F。若无其他特殊纯化标签，同源二聚体杂质将极难通过常规 Protein A 层析去除。")
+                        has_warning = True
+                        
+                    # 3. Allotype 嵌合冲突预警 (ADA 风险)
+                    allo_str_joined = " ".join(allos)
+                    if "G1m1" in allo_str_joined and "nG1m17" in allo_str_joined:
+                        st.error("🚨 **反向排雷 [免疫原性风险]：同种异型冲突！** 同时检测到 G1m1 (D356/L358) 与 G1m3 特征 (R214)。这是一种非天然的人造嵌合体，可能具有极高的抗药抗体 (ADA) 激发风险。")
+                        has_warning = True
+                        
+                    # 4. 突变负荷过高预警
+                    if len(set(muts)) >= 4:
+                        st.warning(f"⚠️ **反向排雷 [结构稳定性]：Fc 突变负荷过高 ({len(set(muts))}种)。** 叠加过多工程化突变极易导致 Fc 域微观折叠异常和新抗原表位暴露。")
+                        has_warning = True
+
+                    if not has_warning:
+                        st.success("✅ **排雷扫描通过**：未见明显的 IgG4 缺失、纯化隐患或严重的同种异型冲突。")
+
+                    st.markdown("---")
+                    
+                    # ==========================================
+                    # 🎯 正向战略推演 (Strategic Deduction)
+                    # ==========================================
+                    st.markdown("##### 核心技术路线研判：")
                     # 1. 异源二聚化平台推演
-                    if any("Azymetric" in m for m in muts):
-                        st.success("🎯 **支架判定：Zymeworks (Azymetric) 不对称平台。** 高技术壁垒的疏水/空间联合突变，用于极高纯度的双抗组装。")
-                    elif any("Charge Steer" in m for m in muts):
-                        st.success("🎯 **支架判定：静电反转驱动双抗。** 依靠电荷相吸的技术，通常来自 Chugai (ART-Ig) 或 Xencor。")
-                    elif any("EW" in m for m in muts) or any("RVT" in m for m in muts):
-                        st.success("🎯 **支架判定：高阶 EW-RVT 异源二聚化平台。** 成功检测到 EWRVT 配对网络特征。")
-                    elif any("Knob" in m for m in muts) or any("Hole" in m for m in muts):
-                        st.success("🎯 **支架判定：经典 Knob-in-Hole (Genentech) 双抗。** 最正统的凸起与凹陷空间位阻设计。")
+                    if any("Azymetric" in m for m in muts): st.markdown("- 🎯 **双抗支架：Zymeworks (Azymetric) 不对称平台。**")
+                    elif any("Charge Steer" in m for m in muts): st.markdown("- 🎯 **双抗支架：静电反转驱动 (Chugai/Xencor等)。**")
+                    elif any("EW" in m for m in muts) or any("RVT" in m for m in muts): st.markdown("- 🎯 **双抗支架：高阶 EW-RVT 异源二聚化平台。**")
+                    elif any("Knob" in m for m in muts) or any("Hole" in m for m in muts): st.markdown("- 🎯 **双抗支架：经典 Knob-in-Hole (Genentech)。**")
                         
                     # 2. 效应子功能推演
-                    if "LALA" in muts and "P329G" in muts:
-                        st.warning("⚠️ **杀伤判定：LALA-PG 终极效应子沉默。** 业界最严苛的去毒性组合，极大概率为规避 CRS 的 T细胞接合器 (TCE)。")
-                    elif "HexaBody" in muts:
-                        st.error("🔥 **杀伤判定：补体风暴激发器 (Genmab HexaBody)。** 诱导抗体形成六聚体，产生毁灭性的 CDC 杀伤效力。")
-                    elif any("GA-SD" in m for m in muts) or any("AL-IE" in m for m in muts):
-                        st.error("🔥 **杀伤判定：超级 ADCC 增强 (GASDALIE等)。** 显著提升巨噬细胞/NK细胞招募，剑指高强度实体瘤杀伤。")
+                    if "LALA" in muts and "P329G" in muts: st.markdown("- 🛡️ **杀伤机制：LALA-PG 终极效应子沉默。** (大概率为规避 CRS 的 T细胞接合器)")
+                    elif "HexaBody" in muts: st.markdown("- ⚔️ **杀伤机制：补体风暴激发器 (Genmab HexaBody)。**")
+                    elif any("GA-SD" in m for m in muts) or any("AL-IE" in m for m in muts): st.markdown("- ⚔️ **杀伤机制：超级 ADCC 增强。**")
                         
                     # 3. 药代动力学推演
-                    if "YTE" in muts or "LS" in muts:
-                        st.info("⏱️ **PK 判定：超长效修饰。** 药物被设计为每月甚至每季度一次给药的长效制剂。")
-                    elif any("IHH" in m for m in muts):
-                        st.info("☢️ **PK 判定：极速体内清除。** 故意破坏 FcRn 结合，这通常是 ADC 毒素载体、放射性核素偶联药物 (RDC) 的标志！")
+                    if "YTE" in muts or "LS" in muts: st.markdown("- ⏱️ **PK 设计：超长效修饰。** (月度/季度给药设计)")
+                    elif any("IHH" in m for m in muts): st.markdown("- ☢️ **PK 设计：极速体内清除。** (通常用于核药/ADC)")
+                    
+                    if not muts:
+                        st.markdown("- 🧬 **常规抗体**：未检测到特殊的工程化修饰意图。")
     else:
         st.error("请输入序列！")
