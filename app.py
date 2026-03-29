@@ -6,15 +6,14 @@ from Bio import Align
 # ==========================================
 # 1. 网页全局设置
 # ==========================================
-st.set_page_config(page_title="Fc 突变深度解码雷达 V18", page_icon="🛡️", layout="wide")
+st.set_page_config(page_title="Fc 突变深度解码雷达 V18.1", page_icon="🛡️", layout="wide")
 
-st.title("🛡️ 工业级 Fc 工程化突变解码雷达 (V18 对齐版)")
-st.info("💡 底层核弹级升级：弃用脆弱的字符串正则匹配。引入 Biopython 局部动态比对 (Pairwise Alignment) 引擎，强制映射标准 EU 编号。实现无视移码、截断的绝对精准度！")
+st.title("🛡️ 工业级 Fc 工程化突变解码雷达 (V18.1 满血版)")
+st.info("💡 终极形态：融合了【满血版彩色战略情报大屏】与【Biopython 动态空间对齐底层】。无视序列移码与截断，精准锁定 EU 绝对坐标！")
 
 # ==========================================
 # 2. 核心知识库：野生型标尺与空间坐标字典
 # ==========================================
-# 绝对真理：野生型 IgG1 Fc (EU 214 ~ 447，无间断共 234 个氨基酸)
 WT_START_EU = 214
 WT_REF_SEQ = "KREPKSCDKTHTCPPCPAPELLGGPSVFLFPPKPKDTLMISRTPEVTCVVVDVSHEDPEVKFNWYVDGVEVHNAKTKPREEQYNSTYRVVSVLTVLHQDWLNGKEYKCKVSNKALPAPIEKTISKAKGQPREPQVYTLPPSREEMTKNQVSLTCLVKGFYPSDIAVEWESNGQPENNYKTTPPVLDSDGSFFLYSKLTVDKSRWQQGNVFSCSVMHEALHNHYTQKSLSLSPGK"
 
@@ -26,31 +25,27 @@ ISOTYPE_MOTIFS = {
     "IgG3": r"CPRCPAPELLG",
 }
 
-# 同种异型鉴定字典 (格式: {名字: (EU坐标要求, 显示编号, 描述)})
 ALLOTYPE_DB = {
     "G1m1": ({"356": 'D', "358": 'L'}, "D356/L358", "高加索人群常见; 强免疫原性标记"),
     "G1m3 / nG1m1": ({"356": 'E', "358": 'M'}, "E356/M358", "亚洲人群常见; G1m3 骨架标志"),
-    "G1m17": ({"214": 'K'}, "K214", "常与 G1m1 连锁 (CH1末端)"),
-    "nG1m17 (G1m3)": ({"214": 'R'}, "R214", "常与 G1m3 连锁 (CH1末端)"),
+    "G1m17": ({"214": 'K'}, "K214", "常与 G1m1 连锁 (CH1区)"),
+    "nG1m17 (G1m3)": ({"214": 'R'}, "R214", "常与 G1m3 连锁 (CH1区)"),
 }
 
-# 突变字典 (基于 EU 绝对坐标映射，支持单点或多点组合)
 MUTATION_DB = {
-    # --- 模块一：效应子功能沉默 ---
-    "LALA / PAA": ({"234": 'A', "235": 'A'}, "L234A, L235A", "通用", "【毒性沉默】消除与 FcγR 结合，大幅降低 ADCC/CDC"),
+    "LALA": ({"234": 'A', "235": 'A'}, "L234A, L235A", "通用", "【毒性沉默】消除与 FcγR 结合，大幅降低 ADCC/CDC 效应"),
+    "PAA (IgG4)": ({"234": 'F', "235": 'A'}, "F234A, L235A", "通用", "【毒性沉默】IgG4专属的彻底静默突变"),
     "FEA": ({"234": 'F', "235": 'E'}, "L234F, L235E", "通用", "【毒性沉默】降低效应子功能"),
     "D265S": ({"265": 'S'}, "D265S", "通用", "【毒性沉默】深度消除效应子结合，破坏结合界面"),
     "D265A": ({"265": 'A'}, "D265A", "通用", "【毒性沉默】深度消除效应子结合，破坏结合界面"),
     "P329G": ({"329": 'G'}, "P329G", "Roche", "【毒性沉默】破坏 FcγR 结合口袋，构成 LALA-PG 组合"),
     "Aglycosylation": ({"297": ['A', 'Q', 'G']}, "N297A/Q/G", "通用", "【去糖基化】消除 N-糖基化位点，丧失效应子功能"),
 
-    # --- 模块二：效应子功能增强 ---
     "GA-SD": ({"236": 'A', "239": 'D'}, "G236A, S239D", "Xencor", "【功能增强】显著增强对 FcγRIIa 和 FcγRIIIa 的亲和力"),
-    "AL-IE": ({"330": 'L', "332": 'E'}, "A330L, I332E", "Xencor", "【功能增强】配合 S239D 构成 GASDALIE，实现极限增强"),
+    "AL-IE": ({"330": 'L', "332": 'E'}, "A330L, I332E", "Xencor", "【功能增强】配合 S239D 构成 GASDALIE，实现 ADCC 极限增强"),
     "HexaBody (E430G)": ({"430": 'G'}, "E430G", "Genmab", "【六聚体化】在细胞表面促进形成六聚体，引爆极限 CDC"),
     "HexaBody (E345R)": ({"345": 'R'}, "E345R", "Genmab", "【六聚体化】同 E430G，促进寡聚化以增强 CDC"),
 
-    # --- 模块三：异源二聚体化 ---
     "Knob (凸起)": ({"366": 'W'}, "T366W", "Genentech", "【双抗组装】经典 KIH 凸起端，强制异源二聚化"),
     "Hole (核心)": ({"366": 'S', "368": 'A'}, "T366S, L368A", "Genentech", "【双抗组装】经典 KIH 凹陷端，容纳 Knob"),
     "Hole (尾部)": ({"407": 'V'}, "Y407V", "Genentech", "【双抗组装】经典 KIH 凹陷端，扩大疏水口袋"),
@@ -62,34 +57,31 @@ MUTATION_DB = {
 
     "Azymetric Chain A (VY)": ({"350": 'V', "351": 'Y'}, "T350V, L351Y", "Zymeworks", "【双抗组装】不对称支架 A 链前段"),
     "Azymetric Chain A (AV)": ({"405": 'A', "407": 'V'}, "F405A, Y407V", "Zymeworks", "【双抗组装】不对称支架 A 链尾段"),
+    "Azymetric Chain B (V)": ({"350": 'V'}, "T350V", "Zymeworks", "【双抗组装】不对称支架 B 链"), # 补回的阉割数据
     "Azymetric Chain B (L)": ({"366": 'L'}, "T366L", "Zymeworks", "【双抗组装】不对称支架 B 链核心"),
-    "Azymetric Chain B (LW)": ({"392": 'L', "394": 'W'}, "K392L, T394W", "Zymeworks", "【双抗组装】不对称支架 B 链匹配"),
+    "Azymetric Chain B (LW)": ({"392": 'L', "394": 'W'}, "K392L, T394W", "Zymeworks", "【双抗组装】不对称支架 B 链空间匹配"),
 
-    "Charge Steer A (E356K)": ({"356": 'K'}, "E356K", "Chugai/XmAb", "【双抗组装】负转正电荷排斥同源二聚"),
-    "Charge Steer A (D399K)": ({"399": 'K'}, "D399K", "Chugai/XmAb", "【双抗组装】负转正电荷深度互补"),
-    "Charge Steer B (K392D)": ({"392": 'D'}, "K392D", "Chugai/XmAb", "【双抗组装】正转负电荷配合 Chain A"),
-    "Charge Steer B (K409D)": ({"409": 'D'}, "K409D", "Chugai/XmAb", "【双抗组装】正转负电荷配合 Chain A"),
+    "Charge Steer Chain A (K1)": ({"356": 'K'}, "E356K", "Chugai/XmAb", "【双抗组装】负转正电荷，利用静电排斥同源二聚"),
+    "Charge Steer Chain A (K2)": ({"399": 'K'}, "D399K", "Chugai/XmAb", "【双抗组装】负转正电荷，深度静电互补"),
+    "Charge Steer Chain B (D1)": ({"392": 'D'}, "K392D", "Chugai/XmAb", "【双抗组装】正转负电荷，配合 Chain A 的 K 突变"),
+    "Charge Steer Chain B (D2)": ({"409": 'D'}, "K409D", "Chugai/XmAb", "【双抗组装】正转负电荷，配合 Chain A 的 K 突变"),
 
-    # --- 模块四：药代动力学优化 ---
-    "YTE": ({"252": 'Y', "254": 'T', "256": 'E'}, "M252Y, S254T, T256E", "AstraZeneca", "【PK优化】增强酸性下对 FcRn 亲和力，延长半衰期"),
-    "LS": ({"428": 'L', "434": 'S'}, "M428L, N434S", "Xencor", "【PK优化】主流长效修饰方案"),
-    "N434A": ({"434": 'A'}, "N434A", "通用", "【PK优化】适度增强 FcRn 结合"),
-    "IHH (I253A)": ({"253": 'A'}, "I253A", "通用", "【快速清除】破坏 FcRn 结合，极速缩短半衰期"),
+    "YTE": ({"252": 'Y', "254": 'T', "256": 'E'}, "M252Y, S254T, T256E", "AstraZeneca", "【PK优化】增强酸性下对 FcRn 的亲和力，延长半衰期"),
+    "LS": ({"428": 'L', "434": 'S'}, "M428L, N434S", "Xencor", "【PK优化】当前最主流的长效修饰方案"),
+    "N434A": ({"434": 'A'}, "N434A", "通用", "【PK优化】适度增强 FcRn 结合，延长半衰期"),
+    "IHH (I253A)": ({"253": 'A'}, "I253A", "通用", "【快速清除】彻底破坏 FcRn 结合，极速缩短半衰期"),
     "IHH (H310A)": ({"310": 'A'}, "H310A", "通用", "【快速清除】协同阻止抗体被再循环"),
 
-    # --- 模块五：CMC 工艺与纯化适配 ---
-    "Protein A 破坏": ({"435": 'R', "436": 'F'}, "H435R, Y436F", "通用", "【CMC纯化】破坏与 Protein A 的结合以梯度洗脱双抗"),
-    "S228P": ({"228": 'P'}, "S228P", "通用", "【结构稳定】IgG4 专属，强制形成链间二硫键，防止臂交换")
+    "Protein A 破坏": ({"435": 'R', "436": 'F'}, "H435R, Y436F", "通用", "【CMC纯化】破坏与 Protein A 的结合，利用梯度洗脱纯化双抗"),
+    "S228P": ({"228": 'P'}, "S228P", "通用", "【结构稳定】IgG4 专属，强制形成链间二硫键，防止 Fab 臂交换")
 }
 
 # ==========================================
 # 3. Biopython 序列对齐与映射引擎
 # ==========================================
 def map_sequence_to_eu(target_seq):
-    """核心算法：通过局部比对建立输入序列与绝对 EU 编号的映射字典"""
     aligner = Align.PairwiseAligner()
     aligner.mode = 'local'
-    # 调高空位罚分，确保算法优先映射突变而不是强行错开
     aligner.open_gap_score = -10
     aligner.extend_gap_score = -0.5
     aligner.match_score = 2
@@ -101,7 +93,6 @@ def map_sequence_to_eu(target_seq):
     best_alignment = alignments[0]
     target_eu_map = {}
     
-    # 提取对齐坐标块
     aligned_ref = best_alignment.aligned[0]
     aligned_tgt = best_alignment.aligned[1]
 
@@ -113,7 +104,6 @@ def map_sequence_to_eu(target_seq):
     return target_eu_map
 
 def check_mutation(pos_dict, eu_map):
-    """根据映射字典核对是否存在目标突变"""
     for pos, allowed_aa in pos_dict.items():
         if pos not in eu_map: return False
         if isinstance(allowed_aa, list):
@@ -126,32 +116,24 @@ def analyze_fc(sequence):
     seq = sequence.upper().replace(" ", "").replace("\n", "")
     results = {"isotype": "未知 (未检测到标准骨架)", "mutations": [], "allotypes": [], "has_fc": False}
     
-    # 构建绝对坐标字典
     eu_map = map_sequence_to_eu(seq)
-    if not eu_map or len(eu_map) < 30: # 如果对齐后连 30 个氨基酸都没有，说明根本不是 Fc
+    if not eu_map or len(eu_map) < 30: 
         return results
         
     results["has_fc"] = True
 
-    # 亚型鉴定保留 Regex，因为它擅长抓取整体基序特征
     for iso, motif in ISOTYPE_MOTIFS.items():
         if re.search(motif, seq):
             results["isotype"] = iso
             break
             
-    # 【核弹升级】：根据绝对 EU 坐标检测同种异型
     for allo_name, (pos_req, eu_num, desc) in ALLOTYPE_DB.items():
         if check_mutation(pos_req, eu_map):
-            results["allotypes"].append({
-                "名称": allo_name, "位置": eu_num, "描述": desc
-            })
+            results["allotypes"].append({"名称": allo_name, "位置": eu_num, "描述": desc})
 
-    # 【核弹升级】：根据绝对 EU 坐标检测突变库
     for mut_name, (pos_req, eu_num, platform, func) in MUTATION_DB.items():
         if check_mutation(pos_req, eu_map):
-            results["mutations"].append({
-                "突变简称": mut_name, "EU 编号": eu_num, "技术溯源": platform, "生物学功能": func
-            })
+            results["mutations"].append({"突变简称": mut_name, "EU 编号": eu_num, "技术溯源": platform, "生物学功能": func})
             
     return results
 
@@ -169,11 +151,11 @@ def parse_fasta(text):
     return sequences
 
 # ==========================================
-# 4. 交互界面与排雷逻辑
+# 4. 交互界面
 # ==========================================
 raw_input = st.text_area("📥 粘贴抗体全长链或 Fc 段序列 (支持多条 FASTA，无惧移码/截断):", height=200)
 
-if st.button("🔍 启动 Biopython 深度解码", type="primary"):
+if st.button("🔍 启动全境 Fc 深度解码", type="primary"):
     if raw_input:
         seq_dict = parse_fasta(raw_input)
         report_data = []
@@ -218,7 +200,7 @@ if st.button("🔍 启动 Biopython 深度解码", type="primary"):
             st.markdown("### 📊 基于空间绝对映射的工程化分析报告")
             st.dataframe(df.style.apply(highlight_rows, axis=1), use_container_width=True)
             
-            # --- 智能战略级推演 & 反向排雷 ---
+            # --- 智能战略级推演 & 反向排雷 (恢复满血 UI) ---
             st.markdown("### 💡 独立分子战略推演与反向排雷预警")
             
             for seq_name, data in deduction_reports.items():
@@ -230,6 +212,9 @@ if st.button("🔍 启动 Biopython 深度解码", type="primary"):
                 
                 with st.expander(f"📌 情报解密: {seq_name}", expanded=True):
                     
+                    # ==========================================
+                    # 💥 反向排雷预警 (Missing Mutation Alerts)
+                    # ==========================================
                     has_warning = False
                     
                     # 1. IgG4 缺陷预警
@@ -259,20 +244,36 @@ if st.button("🔍 启动 Biopython 深度解码", type="primary"):
 
                     st.markdown("---")
                     
-                    # 正向战略推演
+                    # ==========================================
+                    # 🎯 正向战略推演 (恢复满血 UI 提示框)
+                    # ==========================================
                     st.markdown("##### 核心技术路线研判：")
-                    if any("Azymetric" in m for m in muts): st.markdown("- 🎯 **双抗支架：Zymeworks (Azymetric) 不对称平台。**")
-                    elif any("Charge Steer" in m for m in muts): st.markdown("- 🎯 **双抗支架：静电反转驱动 (Chugai/XmAb等)。**")
-                    elif any("EW" in m for m in muts) or any("RVT" in m for m in muts): st.markdown("- 🎯 **双抗支架：高阶 EW-RVT 平台。**")
-                    elif any("Knob" in m for m in muts) or any("Hole" in m for m in muts): st.markdown("- 🎯 **双抗支架：经典 Knob-in-Hole (Genentech)。**")
-                        
-                    if "LALA / PAA" in muts and "P329G" in muts: st.markdown("- 🛡️ **杀伤机制：LALA-PG 终极效应子沉默。** (大概率为规避 CRS 的 T细胞接合器)")
-                    elif "HexaBody" in "".join(muts): st.markdown("- ⚔️ **杀伤机制：补体风暴激发器 (Genmab HexaBody)。**")
-                    elif any("GA-SD" in m for m in muts) or any("AL-IE" in m for m in muts): st.markdown("- ⚔️ **杀伤机制：超级 ADCC 增强。**")
-                        
-                    if "YTE" in muts or "LS" in muts: st.markdown("- ⏱️ **PK 设计：超长效修饰。** (大幅延长半衰期)")
-                    elif any("IHH" in m for m in muts): st.markdown("- ☢️ **PK 设计：极速体内清除。** (通常用于核药/ADC)")
                     
-                    if not muts: st.markdown("- 🧬 **常规抗体**：未检测到特殊的工程化修饰意图。")
+                    # 1. 异源二聚化平台推演
+                    if any("Azymetric" in m for m in muts):
+                        st.success("🎯 **支架判定：Zymeworks (Azymetric) 不对称平台。** 高技术壁垒的疏水/空间联合突变，用于极高纯度的双抗组装。")
+                    elif any("Charge Steer" in m for m in muts):
+                        st.success("🎯 **支架判定：静电反转驱动双抗。** 依靠电荷相吸的技术，通常来自 Chugai (ART-Ig) 或 Xencor。")
+                    elif any("EW" in m for m in muts) or any("RVT" in m for m in muts):
+                        st.success("🎯 **支架判定：高阶 EW-RVT 异源二聚化平台。** 成功检测到 EWRVT 配对网络特征。")
+                    elif any("Knob" in m for m in muts) or any("Hole" in m for m in muts):
+                        st.success("🎯 **支架判定：经典 Knob-in-Hole (Genentech) 双抗。** 最正统的凸起与凹陷空间位阻设计。")
+                        
+                    # 2. 效应子功能推演
+                    if any("LALA" in m for m in muts) and any("P329G" in m for m in muts):
+                        st.warning("⚠️ **杀伤判定：LALA-PG 终极效应子沉默。** 业界最严苛的去毒性组合，极大概率为规避 CRS 的 T细胞接合器 (TCE)。")
+                    elif any("HexaBody" in m for m in muts):
+                        st.error("🔥 **杀伤判定：补体风暴激发器 (Genmab HexaBody)。** 诱导抗体形成六聚体，产生毁灭性的 CDC 杀伤效力。")
+                    elif any("GA-SD" in m for m in muts) or any("AL-IE" in m for m in muts):
+                        st.error("🔥 **杀伤判定：超级 ADCC 增强 (GASDALIE等)。** 显著提升巨噬细胞/NK细胞招募，剑指高强度实体瘤杀伤。")
+                        
+                    # 3. 药代动力学推演
+                    if any("YTE" in m for m in muts) or any("LS" in m for m in muts):
+                        st.info("⏱️ **PK 判定：超长效修饰。** 药物被设计为每月甚至每季度一次给药的长效制剂。")
+                    elif any("IHH" in m for m in muts):
+                        st.info("☢️ **PK 判定：极速体内清除。** 故意破坏 FcRn 结合，这通常是 ADC 毒素载体、放射性核素偶联药物 (RDC) 的标志！")
+                        
+                    if not muts:
+                        st.markdown("- 🧬 **常规抗体**：未检测到特殊的工程化修饰意图。")
     else:
         st.error("请输入序列！")
