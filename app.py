@@ -154,20 +154,18 @@ def parse_fasta(text):
     return sequences
 
 # ==========================================
-# 4. 后台预加载 PDB (解决前端跨域白屏)
+4. 后台预加载 PDB (升级为含铰链区的 1E4K)
 # ==========================================
 @st.cache_data(show_spinner=False)
 def fetch_pdb_data():
-    """让 Python 后端强行把 PDB 文件下好，避免浏览器跨域报错"""
+    """使用 1E4K：包含完整的下铰链区(含 228, 234, 235)，完美适配 LALA 和 S228P 映射"""
     try:
-        # 直接拉取 RCSB 原始数据
-        resp = requests.get("https://files.rcsb.org/download/1FCC.pdb", timeout=10)
+        resp = requests.get("https://files.rcsb.org/download/1E4K.pdb", timeout=10)
         if resp.status_code == 200:
             return resp.text
     except:
         pass
     return None
-
 # ==========================================
 # 5. 交互界面
 # ==========================================
@@ -265,13 +263,13 @@ if st.button("🔍 启动全境 Fc 深度解码", type="primary"):
         st.error("请输入序列！")
 
 # ==========================================
-# 6. 🧊 3D 突变空间靶向映射实验室
+6. 🧊 3D 突变空间靶向映射实验室 (精准打标版)
 # ==========================================
 st.markdown("---")
 st.markdown("### 🧊 3D 突变空间靶向映射实验室")
 
 if 'fc_deduction' in st.session_state and st.session_state['fc_deduction']:
-    st.info("💡 系统将加载标准人源 IgG1 Fc 的晶体结构，并将上方解析出的 EU 突变位点以【彩色球体】锚定在 3D 骨架上。")
+    st.info("💡 系统将加载含完整铰链区的 IgG1 Fc 晶体 (PDB: 1E4K)，并将 EU 突变位点以【彩色球体】锚定在 3D 骨架上。")
     
     valid_seqs = [name for name, data in st.session_state['fc_deduction'].items() if data['muts_obj']]
     
@@ -301,17 +299,17 @@ if 'fc_deduction' in st.session_state and st.session_state['fc_deduction']:
                 
                 st.markdown(f"**🔬 当前空间靶向分子：** `{render_target}`")
                 
-                with st.spinner("从后端直接拉取 PDB 数据并渲染..."):
+                with st.spinner("正在融合突变坐标与晶体拓扑结构..."):
                     pdb_raw = fetch_pdb_data()
                     
                     if pdb_raw:
-                        # 【核弹修复】：传入 Python 后端下载的纯文本，绝不让前端去跨域请求！
                         view = py3Dmol.view(width=800, height=500)
                         view.addModel(pdb_raw, 'pdb')
                         
+                        # 隐藏所有不需要的杂质/水分子，只显示 A 和 B 链
+                        view.setStyle({'cartoon': {'hidden': True}})
                         view.setStyle({'chain': 'A'}, {'cartoon': {'color': '#b0bec5'}})
                         view.setStyle({'chain': 'B'}, {'cartoon': {'color': '#eceff1'}})
-                        view.setStyle({'chain': 'C'}, {'cartoon': {'hidden': True}})
                         
                         for mut in mut_data:
                             mut_name = mut["突变简称"]
@@ -326,13 +324,10 @@ if 'fc_deduction' in st.session_state and st.session_state['fc_deduction']:
                             elif any(x in mut_name for x in ["YTE", "LS", "IHH", "N434A"]): color = '#9c27b0'
 
                             for pos in positions:
-                                view.addStyle({'resi': str(pos), 'chain': ['A', 'B']}, {'cartoon': {'color': '#cfd8dc'}, 'sphere': {'color': color, 'radius': 1.8}})
+                                # 【修复点】：去掉 chain 限制，直接按 EU 编号全链暴力打点；半径放大到 2.5 增加视觉冲击
+                                view.addStyle({'resi': str(pos)}, {'sphere': {'color': color, 'radius': 2.5}})
                                 
                         view.zoomTo()
                         showmol(view, height=500, width=800)
                     else:
                         st.error("网络波动：从 PDB 数据库拉取晶体失败，请稍后重试。")
-    else:
-        st.warning("⚠️ 刚才输入的序列中未检测到已知突变特征，无需空间映射。")
-else:
-    st.warning("⚠️ 请先在最上方输入序列文本并点击『启动全境 Fc 深度解码』。")
