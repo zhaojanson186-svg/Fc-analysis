@@ -9,10 +9,10 @@ from stmol import showmol
 # ==========================================
 # 1. 网页全局设置
 # ==========================================
-st.set_page_config(page_title="Fc 突变深度解码雷达 V19.6", page_icon="🛡️", layout="wide")
+st.set_page_config(page_title="Fc 突变深度解码雷达 V19.7", page_icon="🛡️", layout="wide")
 
-st.title("🛡️ 工业级 Fc 工程化突变解码雷达 (V19.6 终极版)")
-st.info("💡 终极形态：【Biopython 精准空间对齐】+【满血战略排雷大屏】+【3AVE 完美晶体 3D 靶向映射】。")
+st.title("🛡️ 工业级 Fc 工程化突变解码雷达 (V19.7 完美渲染版)")
+st.info("💡 终极形态：【Biopython 精准对齐】+【满血排雷大屏】+【包含完整铰链区(1E4K)的 3D 完美渲染】。")
 
 # ==========================================
 # 2. 核心知识库：野生型标尺与空间坐标字典
@@ -154,13 +154,12 @@ def parse_fasta(text):
     return sequences
 
 # ==========================================
-# 4. 后台预加载 PDB (采用完美 EU 编号的 3AVE 晶体)
+# 4. 后台预加载 PDB (采用包含完整铰链区的 1E4K)
 # ==========================================
 @st.cache_data(show_spinner=False)
 def fetch_pdb_data():
-    """强制使用 3AVE 晶体，序列编号精确匹配 EU 216-446，彻底解决球体错位/消失问题"""
     try:
-        resp = requests.get("https://files.rcsb.org/download/3AVE.pdb", timeout=10)
+        resp = requests.get("https://files.rcsb.org/download/1E4K.pdb", timeout=10)
         if resp.status_code == 200:
             return resp.text
     except:
@@ -271,7 +270,7 @@ st.markdown("---")
 st.markdown("### 🧊 3D 突变空间靶向映射实验室")
 
 if 'fc_deduction' in st.session_state and st.session_state['fc_deduction']:
-    st.info("💡 系统将加载标准人源 IgG1 Fc 的晶体结构 (PDB: 3AVE)，并将上方解析出的 EU 突变位点以【彩色大球体】锚定在 3D 骨架上。")
+    st.info("💡 系统将加载包含完整铰链区的 Fc 晶体 (PDB: 1E4K)，并将上方解析出的 EU 突变位点以【彩色大球体】锚定在 3D 骨架上。")
     
     valid_seqs = [name for name, data in st.session_state['fc_deduction'].items() if data['muts_obj']]
     
@@ -308,15 +307,14 @@ if 'fc_deduction' in st.session_state and st.session_state['fc_deduction']:
                         view = py3Dmol.view(width=800, height=500)
                         view.addModel(pdb_raw, 'pdb')
                         
-                        # 清除杂质，只显示蛋白质骨架
-                        view.setStyle({'protein': True}, {'cartoon': {'color': 'lightgray'}})
+                        # 【终极修复1】：使用 {} 选中所有残基，强制设定为漂亮的灰色卡通骨架
+                        view.setStyle({}, {'cartoon': {'color': '#e0e0e0'}})
                         
                         for mut in mut_data:
                             mut_name = mut["突变简称"]
                             eu_str = mut["EU 编号"]
                             positions = re.findall(r'\d+', eu_str)
                             
-                            # 替换为引擎原生支持的英文字母颜色，杜绝十六进制色彩解析失效
                             color = 'red'
                             if any(x in mut_name for x in ["Knob", "Hole", "EW", "RVT", "Azymetric", "Charge Steer"]): color = 'blue'
                             elif any(x in mut_name for x in ["LALA", "PAA", "P329G", "D265", "FEA", "Aglycosylation"]): color = 'orange'
@@ -324,9 +322,9 @@ if 'fc_deduction' in st.session_state and st.session_state['fc_deduction']:
                             elif any(x in mut_name for x in ["Protein A", "S228P"]): color = 'green'
                             elif any(x in mut_name for x in ["YTE", "LS", "IHH", "N434A"]): color = 'purple'
 
-                            # 强制添加彩色球体
                             for pos in positions:
-                                view.addStyle({'resi': str(pos)}, {'sphere': {'color': color, 'radius': 2.5}})
+                                # 【终极修复2】：使用 addStyle 叠加球体，确保它不仅画出了球，还能保留底层的 Cartoon 骨架
+                                view.addStyle({'resi': str(pos)}, {'sphere': {'color': color, 'radius': 2.0}})
                                 
                         view.zoomTo()
                         showmol(view, height=500, width=800)
