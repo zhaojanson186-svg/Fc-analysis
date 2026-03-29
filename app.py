@@ -3,15 +3,15 @@ import pandas as pd
 import re
 from Bio import Align
 import py3Dmol
-import streamlit.components.v1 as components
+from stmol import showmol
 
 # ==========================================
 # 1. 网页全局设置
 # ==========================================
-st.set_page_config(page_title="Fc 突变深度解码雷达 V19.2", page_icon="🛡️", layout="wide")
+st.set_page_config(page_title="Fc 突变深度解码雷达 V19.3", page_icon="🛡️", layout="wide")
 
-st.title("🛡️ 工业级 Fc 工程化突变解码雷达 (V19.2 终极稳定版)")
-st.info("💡 终极形态：【Biopython 精准空间对齐】+【满血版彩色战略情报大屏】+【原生 HTML 注入固化的 3D 映射实验室】。")
+st.title("🛡️ 工业级 Fc 工程化突变解码雷达 (V19.3 终极渲染版)")
+st.info("💡 终极形态：【Biopython 精准空间对齐】+【满血彩色战略情报大屏】+【完美兼容云端的 3D 映射实验室】。")
 
 # ==========================================
 # 2. 核心知识库：野生型标尺与空间坐标字典
@@ -191,7 +191,6 @@ if st.button("🔍 启动全境 Fc 深度解码", type="primary"):
         if report_data:
             df = pd.DataFrame(report_data)
             st.session_state['fc_deduction'] = deduction_reports 
-            # 重置之前的 3D 渲染状态，防止互相干扰
             st.session_state['render_3d_seq'] = None
             
             def highlight_rows(row):
@@ -206,7 +205,6 @@ if st.button("🔍 启动全境 Fc 深度解码", type="primary"):
             st.markdown("### 📊 基于绝对映射的工程化分析报告")
             st.dataframe(df.style.apply(highlight_rows, axis=1), use_container_width=True)
             
-            # --- 智能战略级推演 & 反向排雷 ---
             st.markdown("### 💡 独立分子战略推演与反向排雷预警")
             for seq_name, data in deduction_reports.items():
                 if data["isotype"] == "未知 (未检测到标准骨架)": continue
@@ -219,21 +217,18 @@ if st.button("🔍 启动全境 Fc 深度解码", type="primary"):
                     has_warning = False
                     
                     if iso == "IgG4 (野生型)" and "S228P" not in muts:
-                        st.error("🚨 **反向排雷 [CMC风险]：缺失 S228P 稳定突变！** 检测到天然 IgG4 骨架，建议引入 S228P 避免 Fab 臂交换。")
+                        st.error("🚨 **反向排雷 [CMC风险]：缺失 S228P 稳定突变！**")
                         has_warning = True
-                        
                     is_bispecific = any(x in "".join(muts) for x in ["Knob", "Hole", "EW", "Azymetric", "Charge Steer"])
                     if is_bispecific and "Protein A 破坏" not in muts:
-                        st.warning("⚠️ **反向排雷 [下游工艺风险]：缺失不对称纯化突变！** 建议增加 H435R/Y436F 以利用梯度洗脱纯化双抗。")
+                        st.warning("⚠️ **反向排雷 [下游工艺风险]：缺失不对称纯化突变！**")
                         has_warning = True
-                        
                     allo_str_joined = " ".join(allos)
                     if "G1m1" in allo_str_joined and "nG1m17" in allo_str_joined:
-                        st.error("🚨 **反向排雷 [免疫原性风险]：同种异型冲突！** 非天然的人造嵌合体 (G1m1 + nG1m17)，极高 ADA 激发风险。")
+                        st.error("🚨 **反向排雷 [免疫原性风险]：同种异型冲突！**")
                         has_warning = True
-                        
                     if len(set(muts)) >= 4:
-                        st.warning(f"⚠️ **反向排雷 [结构稳定性]：Fc 突变负荷过高 ({len(set(muts))}种)。** 极易导致 CH3 域微观折叠异常和 ADA 风险。")
+                        st.warning(f"⚠️ **反向排雷 [结构稳定性]：Fc 突变负荷过高 ({len(set(muts))}种)。**")
                         has_warning = True
 
                     if not has_warning: st.success("✅ **排雷扫描通过**：结构稳健，未见明显的 CMC 缺陷或 Allotype 冲突。")
@@ -245,18 +240,18 @@ if st.button("🔍 启动全境 Fc 深度解码", type="primary"):
                     elif any("EW" in m for m in muts) or any("RVT" in m for m in muts): st.success("🎯 **双抗支架：高阶 EW-RVT 平台。**")
                     elif any("Knob" in m for m in muts) or any("Hole" in m for m in muts): st.success("🎯 **双抗支架：经典 Knob-in-Hole (Genentech)。**")
                         
-                    if any("LALA" in m for m in muts) and any("P329G" in m for m in muts): st.warning("🛡️ **杀伤机制：LALA-PG 终极效应子沉默。** (规避 CRS 的最佳选择)")
+                    if any("LALA" in m for m in muts) and any("P329G" in m for m in muts): st.warning("🛡️ **杀伤机制：LALA-PG 终极效应子沉默。**")
                     elif any("HexaBody" in m for m in muts): st.error("⚔️ **杀伤机制：补体风暴激发器 (Genmab HexaBody CDC)。**")
                     elif any("GA-SD" in m for m in muts) or any("AL-IE" in m for m in muts): st.error("⚔️ **杀伤机制：超级 ADCC 增强。**")
                         
-                    if any("YTE" in m for m in muts) or any("LS" in m for m in muts): st.info("⏱️ **PK 设计：超长效修饰。** (大幅延长半衰期设计)")
-                    elif any("IHH" in m for m in muts): st.info("☢️ **PK 设计：极速体内清除。** (通常用于核药/ADC)")
+                    if any("YTE" in m for m in muts) or any("LS" in m for m in muts): st.info("⏱️ **PK 设计：超长效修饰。**")
+                    elif any("IHH" in m for m in muts): st.info("☢️ **PK 设计：极速体内清除。**")
                     if not muts: st.markdown("- 🧬 **常规抗体**：未检测到特殊的工程化修饰意图。")
     else:
         st.error("请输入序列！")
 
 # ==========================================
-# 6. 🧊 3D 突变空间靶向映射实验室 (终极原生注入版)
+# 6. 🧊 3D 突变空间靶向映射实验室 (终极修复版)
 # ==========================================
 st.markdown("---")
 st.markdown("### 🧊 3D 突变空间靶向映射实验室")
@@ -273,7 +268,7 @@ if 'fc_deduction' in st.session_state and st.session_state['fc_deduction']:
             st.markdown("#### 控制面板")
             selected_seq = st.selectbox("🎯 选择候选链:", valid_seqs)
             
-            # 按钮不再执行渲染，只负责将状态固化到 session_state 中
+            # 使用 session_state 锁死状态，避免重新运行导致视图消失
             if st.button("🏗️ 启动空间靶向渲染", type="primary", use_container_width=True):
                 st.session_state['render_3d_seq'] = selected_seq
             
@@ -287,14 +282,14 @@ if 'fc_deduction' in st.session_state and st.session_state['fc_deduction']:
             """)
         
         with col_graph:
-            # 只要 session_state 里有值，就跨越按钮生命周期，强制长久渲染！
+            # 【终极奥义】：完美结合 Session 锁定 + stmol 原生组件渲染
             if st.session_state.get('render_3d_seq'):
                 render_target = st.session_state['render_3d_seq']
                 mut_data = st.session_state['fc_deduction'][render_target]['muts_obj']
                 
                 st.markdown(f"**🔬 当前空间靶向分子：** `{render_target}`")
                 
-                # 构建底层的 3D 引擎对象
+                # 构建 3D 视图
                 view = py3Dmol.view(width=800, height=500)
                 view.addModel(query='pdb:1FCC')
                 view.setStyle({'chain': 'A'}, {'cartoon': {'color': '#b0bec5'}})
@@ -319,9 +314,8 @@ if 'fc_deduction' in st.session_state and st.session_state['fc_deduction']:
                         
                 view.zoomTo()
                 
-                # 【终极奥义】：直接抽取 py3Dmol 的底层 HTML 代码，用 Streamlit 原生组件硬塞进网页！无视所有的 iframe 兼容 Bug！
-                html_code = view._make_html()
-                components.html(html_code, height=500, width=800)
+                # 使用 stmol 的官方方法进行安全注入
+                showmol(view, height=500, width=800)
     else:
         st.warning("⚠️ 刚才输入的序列中未检测到已知突变特征，无需空间映射。")
 else:
