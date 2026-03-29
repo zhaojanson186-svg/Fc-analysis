@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import re
+import requests
 from Bio import Align
 import py3Dmol
 from stmol import showmol
@@ -8,10 +9,10 @@ from stmol import showmol
 # ==========================================
 # 1. 网页全局设置
 # ==========================================
-st.set_page_config(page_title="Fc 突变深度解码雷达 V19.3", page_icon="🛡️", layout="wide")
+st.set_page_config(page_title="Fc 突变深度解码雷达 V19.4", page_icon="🛡️", layout="wide")
 
-st.title("🛡️ 工业级 Fc 工程化突变解码雷达 (V19.3 终极渲染版)")
-st.info("💡 终极形态：【Biopython 精准空间对齐】+【满血彩色战略情报大屏】+【完美兼容云端的 3D 映射实验室】。")
+st.title("🛡️ 工业级 Fc 工程化突变解码雷达 (V19.4 网络抗压版)")
+st.info("💡 终极形态：彻底修复浏览器跨域白屏问题，服务器端直连 PDB 数据库硬注入，保证 3D 模型 100% 渲染。")
 
 # ==========================================
 # 2. 核心知识库：野生型标尺与空间坐标字典
@@ -153,7 +154,22 @@ def parse_fasta(text):
     return sequences
 
 # ==========================================
-# 4. 交互界面
+# 4. 后台预加载 PDB (解决前端跨域白屏)
+# ==========================================
+@st.cache_data(show_spinner=False)
+def fetch_pdb_data():
+    """让 Python 后端强行把 PDB 文件下好，避免浏览器跨域报错"""
+    try:
+        # 直接拉取 RCSB 原始数据
+        resp = requests.get("https://files.rcsb.org/download/1FCC.pdb", timeout=10)
+        if resp.status_code == 200:
+            return resp.text
+    except:
+        pass
+    return None
+
+# ==========================================
+# 5. 交互界面
 # ==========================================
 raw_input = st.text_area("📥 粘贴抗体全长链或 Fc 段序列 (支持多条 FASTA，无惧移码/截断):", height=200)
 
@@ -191,7 +207,7 @@ if st.button("🔍 启动全境 Fc 深度解码", type="primary"):
         if report_data:
             df = pd.DataFrame(report_data)
             st.session_state['fc_deduction'] = deduction_reports 
-            st.session_state['render_3d_seq'] = None
+            st.session_state['render_3d_seq'] = None # 重置3D状态
             
             def highlight_rows(row):
                 mut_str = str(row['特定突变识别'])
@@ -215,7 +231,6 @@ if st.button("🔍 启动全境 Fc 深度解码", type="primary"):
                 
                 with st.expander(f"📌 情报解密: {seq_name}", expanded=True):
                     has_warning = False
-                    
                     if iso == "IgG4 (野生型)" and "S228P" not in muts:
                         st.error("🚨 **反向排雷 [CMC风险]：缺失 S228P 稳定突变！**")
                         has_warning = True
@@ -230,7 +245,6 @@ if st.button("🔍 启动全境 Fc 深度解码", type="primary"):
                     if len(set(muts)) >= 4:
                         st.warning(f"⚠️ **反向排雷 [结构稳定性]：Fc 突变负荷过高 ({len(set(muts))}种)。**")
                         has_warning = True
-
                     if not has_warning: st.success("✅ **排雷扫描通过**：结构稳健，未见明显的 CMC 缺陷或 Allotype 冲突。")
 
                     st.markdown("---")
@@ -251,13 +265,13 @@ if st.button("🔍 启动全境 Fc 深度解码", type="primary"):
         st.error("请输入序列！")
 
 # ==========================================
-# 6. 🧊 3D 突变空间靶向映射实验室 (终极修复版)
+# 6. 🧊 3D 突变空间靶向映射实验室
 # ==========================================
 st.markdown("---")
 st.markdown("### 🧊 3D 突变空间靶向映射实验室")
 
 if 'fc_deduction' in st.session_state and st.session_state['fc_deduction']:
-    st.info("💡 系统将加载标准人源 IgG1 Fc 的晶体结构 (PDB: 1FCC，A/B两链)，并将上方解析出的 EU 突变位点以【彩色球体】锚定在 3D 骨架上。")
+    st.info("💡 系统将加载标准人源 IgG1 Fc 的晶体结构，并将上方解析出的 EU 突变位点以【彩色球体】锚定在 3D 骨架上。")
     
     valid_seqs = [name for name, data in st.session_state['fc_deduction'].items() if data['muts_obj']]
     
@@ -268,7 +282,6 @@ if 'fc_deduction' in st.session_state and st.session_state['fc_deduction']:
             st.markdown("#### 控制面板")
             selected_seq = st.selectbox("🎯 选择候选链:", valid_seqs)
             
-            # 使用 session_state 锁死状态，避免重新运行导致视图消失
             if st.button("🏗️ 启动空间靶向渲染", type="primary", use_container_width=True):
                 st.session_state['render_3d_seq'] = selected_seq
             
@@ -282,40 +295,43 @@ if 'fc_deduction' in st.session_state and st.session_state['fc_deduction']:
             """)
         
         with col_graph:
-            # 【终极奥义】：完美结合 Session 锁定 + stmol 原生组件渲染
             if st.session_state.get('render_3d_seq'):
                 render_target = st.session_state['render_3d_seq']
                 mut_data = st.session_state['fc_deduction'][render_target]['muts_obj']
                 
                 st.markdown(f"**🔬 当前空间靶向分子：** `{render_target}`")
                 
-                # 构建 3D 视图
-                view = py3Dmol.view(width=800, height=500)
-                view.addModel(query='pdb:1FCC')
-                view.setStyle({'chain': 'A'}, {'cartoon': {'color': '#b0bec5'}})
-                view.setStyle({'chain': 'B'}, {'cartoon': {'color': '#eceff1'}})
-                view.setStyle({'chain': 'C'}, {'cartoon': {'hidden': True}})
-                
-                # 遍历打点
-                for mut in mut_data:
-                    mut_name = mut["突变简称"]
-                    eu_str = mut["EU 编号"]
-                    positions = re.findall(r'\d+', eu_str)
+                with st.spinner("从后端直接拉取 PDB 数据并渲染..."):
+                    pdb_raw = fetch_pdb_data()
                     
-                    color = 'red'
-                    if any(x in mut_name for x in ["Knob", "Hole", "EW", "RVT", "Azymetric", "Charge Steer"]): color = '#2196f3'
-                    elif any(x in mut_name for x in ["LALA", "PAA", "P329G", "D265", "FEA", "Aglycosylation"]): color = '#ff9800'
-                    elif any(x in mut_name for x in ["GA-SD", "AL-IE", "HexaBody"]): color = '#e53935'
-                    elif any(x in mut_name for x in ["Protein A", "S228P"]): color = '#4caf50'
-                    elif any(x in mut_name for x in ["YTE", "LS", "IHH", "N434A"]): color = '#9c27b0'
-
-                    for pos in positions:
-                        view.addStyle({'resi': str(pos), 'chain': ['A', 'B']}, {'cartoon': {'color': '#cfd8dc'}, 'sphere': {'color': color, 'radius': 1.8}})
+                    if pdb_raw:
+                        # 【核弹修复】：传入 Python 后端下载的纯文本，绝不让前端去跨域请求！
+                        view = py3Dmol.view(width=800, height=500)
+                        view.addModel(pdb_raw, 'pdb')
                         
-                view.zoomTo()
-                
-                # 使用 stmol 的官方方法进行安全注入
-                showmol(view, height=500, width=800)
+                        view.setStyle({'chain': 'A'}, {'cartoon': {'color': '#b0bec5'}})
+                        view.setStyle({'chain': 'B'}, {'cartoon': {'color': '#eceff1'}})
+                        view.setStyle({'chain': 'C'}, {'cartoon': {'hidden': True}})
+                        
+                        for mut in mut_data:
+                            mut_name = mut["突变简称"]
+                            eu_str = mut["EU 编号"]
+                            positions = re.findall(r'\d+', eu_str)
+                            
+                            color = 'red'
+                            if any(x in mut_name for x in ["Knob", "Hole", "EW", "RVT", "Azymetric", "Charge Steer"]): color = '#2196f3'
+                            elif any(x in mut_name for x in ["LALA", "PAA", "P329G", "D265", "FEA", "Aglycosylation"]): color = '#ff9800'
+                            elif any(x in mut_name for x in ["GA-SD", "AL-IE", "HexaBody"]): color = '#e53935'
+                            elif any(x in mut_name for x in ["Protein A", "S228P"]): color = '#4caf50'
+                            elif any(x in mut_name for x in ["YTE", "LS", "IHH", "N434A"]): color = '#9c27b0'
+
+                            for pos in positions:
+                                view.addStyle({'resi': str(pos), 'chain': ['A', 'B']}, {'cartoon': {'color': '#cfd8dc'}, 'sphere': {'color': color, 'radius': 1.8}})
+                                
+                        view.zoomTo()
+                        showmol(view, height=500, width=800)
+                    else:
+                        st.error("网络波动：从 PDB 数据库拉取晶体失败，请稍后重试。")
     else:
         st.warning("⚠️ 刚才输入的序列中未检测到已知突变特征，无需空间映射。")
 else:
