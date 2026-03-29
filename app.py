@@ -9,10 +9,10 @@ from stmol import showmol
 # ==========================================
 # 1. 网页全局设置
 # ==========================================
-st.set_page_config(page_title="Fc 突变深度解码雷达 V19.5", page_icon="🛡️", layout="wide")
+st.set_page_config(page_title="Fc 突变深度解码雷达 V19.6", page_icon="🛡️", layout="wide")
 
-st.title("🛡️ 工业级 Fc 工程化突变解码雷达 (V19.5 终极版)")
-st.info("💡 终极形态：【Biopython 精准空间对齐】+【满血战略排雷大屏】+【1E4K 完整铰链区 3D 靶向映射】。")
+st.title("🛡️ 工业级 Fc 工程化突变解码雷达 (V19.6 终极版)")
+st.info("💡 终极形态：【Biopython 精准空间对齐】+【满血战略排雷大屏】+【3AVE 完美晶体 3D 靶向映射】。")
 
 # ==========================================
 # 2. 核心知识库：野生型标尺与空间坐标字典
@@ -154,13 +154,13 @@ def parse_fasta(text):
     return sequences
 
 # ==========================================
-# 4. 后台预加载 PDB (采用含完整铰链区的 1E4K)
+# 4. 后台预加载 PDB (采用完美 EU 编号的 3AVE 晶体)
 # ==========================================
 @st.cache_data(show_spinner=False)
 def fetch_pdb_data():
-    """强制使用 Python 后端直连拉取，避免前端浏览器跨域拦截"""
+    """强制使用 3AVE 晶体，序列编号精确匹配 EU 216-446，彻底解决球体错位/消失问题"""
     try:
-        resp = requests.get("https://files.rcsb.org/download/1E4K.pdb", timeout=10)
+        resp = requests.get("https://files.rcsb.org/download/3AVE.pdb", timeout=10)
         if resp.status_code == 200:
             return resp.text
     except:
@@ -231,18 +231,18 @@ if st.button("🔍 启动全境 Fc 深度解码", type="primary"):
                 with st.expander(f"📌 情报解密: {seq_name}", expanded=True):
                     has_warning = False
                     if iso == "IgG4 (野生型)" and "S228P" not in muts:
-                        st.error("🚨 **反向排雷 [CMC风险]：缺失 S228P 稳定突变！** 检测到天然 IgG4 骨架，建议引入 S228P 避免 Fab 臂交换。")
+                        st.error("🚨 **反向排雷 [CMC风险]：缺失 S228P 稳定突变！**")
                         has_warning = True
                     is_bispecific = any(x in "".join(muts) for x in ["Knob", "Hole", "EW", "Azymetric", "Charge Steer"])
                     if is_bispecific and "Protein A 破坏" not in muts:
-                        st.warning("⚠️ **反向排雷 [下游工艺风险]：缺失不对称纯化突变！** 建议增加 H435R/Y436F 以便去除同源二聚体杂质。")
+                        st.warning("⚠️ **反向排雷 [下游工艺风险]：缺失不对称纯化突变！**")
                         has_warning = True
                     allo_str_joined = " ".join(allos)
                     if "G1m1" in allo_str_joined and "nG1m17" in allo_str_joined:
-                        st.error("🚨 **反向排雷 [免疫原性风险]：同种异型冲突！** 非天然的人造嵌合体，可能具有极高的 ADA 激发风险。")
+                        st.error("🚨 **反向排雷 [免疫原性风险]：同种异型冲突！**")
                         has_warning = True
                     if len(set(muts)) >= 4:
-                        st.warning(f"⚠️ **反向排雷 [结构稳定性]：Fc 突变负荷过高 ({len(set(muts))}种)。** 极易导致微观折叠异常和新抗原暴露。")
+                        st.warning(f"⚠️ **反向排雷 [结构稳定性]：Fc 突变负荷过高 ({len(set(muts))}种)。**")
                         has_warning = True
 
                     if not has_warning: st.success("✅ **排雷扫描通过**：结构稳健，未见明显的 CMC 缺陷或 Allotype 冲突。")
@@ -258,8 +258,8 @@ if st.button("🔍 启动全境 Fc 深度解码", type="primary"):
                     elif any("HexaBody" in m for m in muts): st.error("⚔️ **杀伤机制：补体风暴激发器 (Genmab HexaBody CDC)。**")
                     elif any("GA-SD" in m for m in muts) or any("AL-IE" in m for m in muts): st.error("⚔️ **杀伤机制：超级 ADCC 增强。**")
                         
-                    if any("YTE" in m for m in muts) or any("LS" in m for m in muts): st.info("⏱️ **PK 设计：超长效修饰。** (大幅延长半衰期)")
-                    elif any("IHH" in m for m in muts): st.info("☢️ **PK 设计：极速体内清除。** (通常用于核药/ADC)")
+                    if any("YTE" in m for m in muts) or any("LS" in m for m in muts): st.info("⏱️ **PK 设计：超长效修饰。**")
+                    elif any("IHH" in m for m in muts): st.info("☢️ **PK 设计：极速体内清除。**")
                     if not muts: st.markdown("- 🧬 **常规抗体**：未检测到特殊的工程化修饰意图。")
     else:
         st.error("请输入序列！")
@@ -271,7 +271,7 @@ st.markdown("---")
 st.markdown("### 🧊 3D 突变空间靶向映射实验室")
 
 if 'fc_deduction' in st.session_state and st.session_state['fc_deduction']:
-    st.info("💡 系统将加载标准人源 IgG1 Fc 的完整晶体结构 (PDB: 1E4K)，并将上方解析出的 EU 突变位点以【彩色大球体】锚定在 3D 骨架上。")
+    st.info("💡 系统将加载标准人源 IgG1 Fc 的晶体结构 (PDB: 3AVE)，并将上方解析出的 EU 突变位点以【彩色大球体】锚定在 3D 骨架上。")
     
     valid_seqs = [name for name, data in st.session_state['fc_deduction'].items() if data['muts_obj']]
     
@@ -308,23 +308,23 @@ if 'fc_deduction' in st.session_state and st.session_state['fc_deduction']:
                         view = py3Dmol.view(width=800, height=500)
                         view.addModel(pdb_raw, 'pdb')
                         
-                        view.setStyle({'cartoon': {'color': '#eceff1'}})
-                        view.setStyle({'chain': 'A'}, {'cartoon': {'color': '#b0bec5'}})
-                        view.setStyle({'chain': 'B'}, {'cartoon': {'color': '#cfd8dc'}})
+                        # 清除杂质，只显示蛋白质骨架
+                        view.setStyle({'protein': True}, {'cartoon': {'color': 'lightgray'}})
                         
                         for mut in mut_data:
                             mut_name = mut["突变简称"]
                             eu_str = mut["EU 编号"]
                             positions = re.findall(r'\d+', eu_str)
                             
+                            # 替换为引擎原生支持的英文字母颜色，杜绝十六进制色彩解析失效
                             color = 'red'
-                            if any(x in mut_name for x in ["Knob", "Hole", "EW", "RVT", "Azymetric", "Charge Steer"]): color = '#2196f3'
-                            elif any(x in mut_name for x in ["LALA", "PAA", "P329G", "D265", "FEA", "Aglycosylation"]): color = '#ff9800'
-                            elif any(x in mut_name for x in ["GA-SD", "AL-IE", "HexaBody"]): color = '#e53935'
-                            elif any(x in mut_name for x in ["Protein A", "S228P"]): color = '#4caf50'
-                            elif any(x in mut_name for x in ["YTE", "LS", "IHH", "N434A"]): color = '#9c27b0'
+                            if any(x in mut_name for x in ["Knob", "Hole", "EW", "RVT", "Azymetric", "Charge Steer"]): color = 'blue'
+                            elif any(x in mut_name for x in ["LALA", "PAA", "P329G", "D265", "FEA", "Aglycosylation"]): color = 'orange'
+                            elif any(x in mut_name for x in ["GA-SD", "AL-IE", "HexaBody"]): color = 'red'
+                            elif any(x in mut_name for x in ["Protein A", "S228P"]): color = 'green'
+                            elif any(x in mut_name for x in ["YTE", "LS", "IHH", "N434A"]): color = 'purple'
 
-                            # 直接根据氨基酸编号暴力打点，无视链限制，半径放大至 2.5
+                            # 强制添加彩色球体
                             for pos in positions:
                                 view.addStyle({'resi': str(pos)}, {'sphere': {'color': color, 'radius': 2.5}})
                                 
