@@ -2,17 +2,16 @@ import streamlit as st
 import pandas as pd
 import re
 from Bio import Align
-from stmol import showmol
 import py3Dmol
-import time
+import streamlit.components.v1 as components
 
 # ==========================================
 # 1. 网页全局设置
 # ==========================================
-st.set_page_config(page_title="Fc 突变深度解码雷达 V19.1", page_icon="🛡️", layout="wide")
+st.set_page_config(page_title="Fc 突变深度解码雷达 V19.2", page_icon="🛡️", layout="wide")
 
-st.title("🛡️ 工业级 Fc 工程化突变解码雷达 (V19.1 终极封神版)")
-st.info("💡 终极形态：融合【Biopython 精准空间对齐】+【满血版彩色战略情报大屏】+【🧊 坚不可摧的 3D 突变空间靶向映射实验室】。")
+st.title("🛡️ 工业级 Fc 工程化突变解码雷达 (V19.2 终极稳定版)")
+st.info("💡 终极形态：【Biopython 精准空间对齐】+【满血版彩色战略情报大屏】+【原生 HTML 注入固化的 3D 映射实验室】。")
 
 # ==========================================
 # 2. 核心知识库：野生型标尺与空间坐标字典
@@ -154,59 +153,7 @@ def parse_fasta(text):
     return sequences
 
 # ==========================================
-# 4. 3D 渲染引擎 (V19.1 满血优化版)
-# ==========================================
-def render_fc_3d_ironclad(mutations_list, container):
-    """【修复细节】：不再在此函数内调用 st.write 图例，图例改在 Part 6 的 container 里显式调用，防止 stmol 噎食。"""
-    
-    # 强制在容器内重刷出一个空白对象
-    container.empty()
-    
-    # 构建 3D 视图块
-    view = py3Dmol.view(width=800, height=500)
-    # 绝对标尺 PDB: 1FCC (人 IgG1 Fc-Protein A)
-    view.addModel(query='pdb:1FCC')
-    
-    # 基础样式
-    view.setStyle({'chain': 'A'}, {'cartoon': {'color': '#b0bec5'}})
-    view.setStyle({'chain': 'B'}, {'cartoon': {'color': '#eceff1'}})
-    
-    # 隐藏杂质 Protein A (Chain C)
-    view.setStyle({'chain': 'C'}, {'cartoon': {'hidden': True}})
-    
-    has_mut = False
-    # 遍历突变并高光标记
-    for mut in mutations_list:
-        mut_name = mut["突变简称"]
-        eu_str = mut["EU 编号"]
-        # 正则提取欧盟编号数字
-        positions = re.findall(r'\d+', eu_str)
-        
-        # 智能配色
-        color = 'red' # 兜底颜色
-        if any(x in mut_name for x in ["Knob", "Hole", "EW", "RVT", "Azymetric", "Charge Steer"]): color = '#2196f3' # 蓝色：双抗
-        elif any(x in mut_name for x in ["LALA", "PAA", "P329G", "D265", "FEA", "Aglycosylation"]): color = '#ff9800' # 橙色：沉默
-        elif any(x in mut_name for x in ["GA-SD", "AL-IE", "HexaBody"]): color = '#e53935' # 红色：杀伤
-        elif any(x in mut_name for x in ["Protein A", "S228P"]): color = '#4caf50' # 绿色：纯化/稳定
-        elif any(x in mut_name for x in ["YTE", "LS", "IHH", "N434A"]): color = '#9c27b0' # 紫色：PK
-
-        for pos in positions:
-            has_mut = True
-            # 将突变位点映射为彩色球体 (锚定 A、B 链)
-            view.addStyle({'resi': str(pos), 'chain': ['A', 'B']}, {'cartoon': {'color': '#cfd8dc'}, 'sphere': {'color': color, 'radius': 1.8}})
-            
-    view.zoomTo()
-    
-    # 【修复细节】：在同一个 Container 里显式调用 stmol
-    with container:
-        # 在云端环境下，加一个极其微小的延迟，确保 iframe 能加载 HTML
-        time.sleep(0.1)
-        showmol(view, height=500, width=800)
-        # 再次强制重刷一个空元素作为 stmol iframe 的尾部，稳定其 DOM
-        st.write("")
-
-# ==========================================
-# 5. 交互界面
+# 4. 交互界面
 # ==========================================
 raw_input = st.text_area("📥 粘贴抗体全长链或 Fc 段序列 (支持多条 FASTA，无惧移码/截断):", height=200)
 
@@ -224,7 +171,7 @@ if st.button("🔍 启动全境 Fc 深度解码", type="primary"):
                 
                 deduction_reports[name] = {
                     "isotype": res["isotype"],
-                    "muts_obj": res["mutations"], # 存储完整对象供 Part 6 渲染用
+                    "muts_obj": res["mutations"], 
                     "muts": current_muts,
                     "allos": current_allos
                 }
@@ -243,7 +190,9 @@ if st.button("🔍 启动全境 Fc 深度解码", type="primary"):
 
         if report_data:
             df = pd.DataFrame(report_data)
-            st.session_state['fc_deduction'] = deduction_reports # 写入 Session，实现 3D 的完全隔离
+            st.session_state['fc_deduction'] = deduction_reports 
+            # 重置之前的 3D 渲染状态，防止互相干扰
+            st.session_state['render_3d_seq'] = None
             
             def highlight_rows(row):
                 mut_str = str(row['特定突变识别'])
@@ -307,16 +256,14 @@ if st.button("🔍 启动全境 Fc 深度解码", type="primary"):
         st.error("请输入序列！")
 
 # ==========================================
-# 6. 🧊 3D 突变空间靶向映射实验室 (隔离修复版)
+# 6. 🧊 3D 突变空间靶向映射实验室 (终极原生注入版)
 # ==========================================
 st.markdown("---")
 st.markdown("### 🧊 3D 突变空间靶向映射实验室")
 
-# 【核弹升级】：3D 模块完全隔离，只依赖 Session。保证其在云端 re-run 时不卡顿。
 if 'fc_deduction' in st.session_state and st.session_state['fc_deduction']:
     st.info("💡 系统将加载标准人源 IgG1 Fc 的晶体结构 (PDB: 1FCC，A/B两链)，并将上方解析出的 EU 突变位点以【彩色球体】锚定在 3D 骨架上。")
     
-    # 提取有突变的序列列表供用户选择
     valid_seqs = [name for name, data in st.session_state['fc_deduction'].items() if data['muts_obj']]
     
     if valid_seqs:
@@ -325,7 +272,10 @@ if 'fc_deduction' in st.session_state and st.session_state['fc_deduction']:
         with col_ctrl:
             st.markdown("#### 控制面板")
             selected_seq = st.selectbox("🎯 选择候选链:", valid_seqs)
-            start_render_btn = st.button("🏗️ 启动空间靶向渲染", type="primary", use_container_width=True)
+            
+            # 按钮不再执行渲染，只负责将状态固化到 session_state 中
+            if st.button("🏗️ 启动空间靶向渲染", type="primary", use_container_width=True):
+                st.session_state['render_3d_seq'] = selected_seq
             
             st.markdown("""
             **颜色图例指引：**
@@ -337,13 +287,41 @@ if 'fc_deduction' in st.session_state and st.session_state['fc_deduction']:
             """)
         
         with col_graph:
-            # 创建专门用于渲染的 Container
-            graph_container = st.empty()
-            
-            if start_render_btn:
-                mut_data = st.session_state['fc_deduction'][selected_seq]['muts_obj']
-                with st.spinner(f"🚀 正在加载 1FCC 并映射 {selected_seq} 的空间坐标..."):
-                    render_fc_3d_ironclad(mut_data, graph_container)
+            # 只要 session_state 里有值，就跨越按钮生命周期，强制长久渲染！
+            if st.session_state.get('render_3d_seq'):
+                render_target = st.session_state['render_3d_seq']
+                mut_data = st.session_state['fc_deduction'][render_target]['muts_obj']
+                
+                st.markdown(f"**🔬 当前空间靶向分子：** `{render_target}`")
+                
+                # 构建底层的 3D 引擎对象
+                view = py3Dmol.view(width=800, height=500)
+                view.addModel(query='pdb:1FCC')
+                view.setStyle({'chain': 'A'}, {'cartoon': {'color': '#b0bec5'}})
+                view.setStyle({'chain': 'B'}, {'cartoon': {'color': '#eceff1'}})
+                view.setStyle({'chain': 'C'}, {'cartoon': {'hidden': True}})
+                
+                # 遍历打点
+                for mut in mut_data:
+                    mut_name = mut["突变简称"]
+                    eu_str = mut["EU 编号"]
+                    positions = re.findall(r'\d+', eu_str)
+                    
+                    color = 'red'
+                    if any(x in mut_name for x in ["Knob", "Hole", "EW", "RVT", "Azymetric", "Charge Steer"]): color = '#2196f3'
+                    elif any(x in mut_name for x in ["LALA", "PAA", "P329G", "D265", "FEA", "Aglycosylation"]): color = '#ff9800'
+                    elif any(x in mut_name for x in ["GA-SD", "AL-IE", "HexaBody"]): color = '#e53935'
+                    elif any(x in mut_name for x in ["Protein A", "S228P"]): color = '#4caf50'
+                    elif any(x in mut_name for x in ["YTE", "LS", "IHH", "N434A"]): color = '#9c27b0'
+
+                    for pos in positions:
+                        view.addStyle({'resi': str(pos), 'chain': ['A', 'B']}, {'cartoon': {'color': '#cfd8dc'}, 'sphere': {'color': color, 'radius': 1.8}})
+                        
+                view.zoomTo()
+                
+                # 【终极奥义】：直接抽取 py3Dmol 的底层 HTML 代码，用 Streamlit 原生组件硬塞进网页！无视所有的 iframe 兼容 Bug！
+                html_code = view._make_html()
+                components.html(html_code, height=500, width=800)
     else:
         st.warning("⚠️ 刚才输入的序列中未检测到已知突变特征，无需空间映射。")
 else:
