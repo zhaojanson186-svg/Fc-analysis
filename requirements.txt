@@ -4,3 +4,4 @@ openpyxl
 biopython
 stmol
 py3Dmol
+ipython-genutils
